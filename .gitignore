@@ -1,0 +1,12 @@
+.DS_Store
+composer.lock
+composer.dingo.lock
+.php_cs.cache
+/vendor/
+tests/public/
+.idea/
+coverage.xml
+results.xml
+docs/_build
+docs/make.bat
+.phpunit.result.cache
