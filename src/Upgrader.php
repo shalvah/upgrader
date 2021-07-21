@@ -48,11 +48,11 @@ class Upgrader
 
     public function dryRun(): array
     {
-        $userCurrentConfig = require $this->configFiles['user_relative'];
-        $incomingConfig = require $this->configFiles['package_absolute'];
+        [$userCurrentConfig, $incomingSampleConfig] = $this->getConfigs();
 
-        $this->fetchAddedItems($userCurrentConfig, $incomingConfig);
-        $this->fetchRemovedAndRenamedItems($userCurrentConfig, $incomingConfig);
+        $this->fetchAddedItems($userCurrentConfig, $incomingSampleConfig);
+        $this->fetchRemovedAndRenamedItems($userCurrentConfig, $incomingSampleConfig);
+
         return $this->changes;
     }
 
@@ -89,6 +89,7 @@ class Upgrader
                     'type' => self::CHANGE_ADDED,
                     'key' => $fullKey,
                     'description' => "- `{$fullKey}` will be added.",
+                    'value' => $incomingConfig[$key],
                 ];
             } else {
                 if (is_array($value)) {
@@ -163,5 +164,13 @@ class Upgrader
         }
 
         return "$rootKey.$key";
+    }
+
+    public function getConfigs(): array
+    {
+        $userCurrentConfig = require $this->configFiles['user_relative'];
+        $incomingConfig = require $this->configFiles['package_absolute'];
+
+        return [$userCurrentConfig, $incomingConfig];
     }
 }

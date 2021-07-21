@@ -17,22 +17,25 @@
     "nikic/php-parser": "^4.10"
   },
   "require-dev": {
-    "brianium/paratest": "^6.0",
     "dms/phpunit-arraysubset-asserts": "^0.2.0",
-    "phpstan/phpstan": "^0.12.90",
-    "phpunit/phpunit": "^9.0"
+    "mockery/mockery": "^1.4",
+    "pestphp/pest": "^1.10",
+    "phpstan/phpstan": "^0.12.90"
   },
   "autoload": {
     "psr-4": {
       "Shalvah\\Upgrader\\": "src/"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "Shalvah\\Upgrader\\Tests\\": "tests/"
+    }
+  },
   "scripts": {
-    "lint": "phpstan analyse -c ./phpstan.neon src camel --memory-limit 1G",
-    "test": "phpunit --stop-on-failure --exclude-group dingo",
-    "test-ci": "phpunit --exclude-group dingo",
-    "test-parallel": "paratest -p16 --stop-on-failure --exclude-group dingo",
-    "test-parallel-ci": "paratest -p16 --exclude-group dingo"
+    "lint": "phpstan analyse -c ./phpstan.neon src --memory-limit 1G",
+    "test": "pest --stop-on-failure",
+    "test-ci": "pest"
   },
   "config": {
     "preferred-install": "dist",
