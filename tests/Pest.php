@@ -48,7 +48,7 @@ expect()->extend('toBeOne', function () {
 function mockUpgraderWithConfigs(array $userOldConfig = [], array $sampleNewConfig = [])
 {
     $mockUpgrader = Mockery::mock(Upgrader::class)->makePartial();
-    $mockUpgrader->shouldReceive('getConfigs')
+    $mockUpgrader->shouldReceive('loadConfigs')
         ->andReturn([
             $userOldConfig,
             $sampleNewConfig,

@@ -48,7 +48,7 @@ class Upgrader
 
     public function dryRun(): array
     {
-        [$userCurrentConfig, $incomingSampleConfig] = $this->getConfigs();
+        [$userCurrentConfig, $incomingSampleConfig] = $this->loadConfigs();
 
         $this->fetchAddedItems($userCurrentConfig, $incomingSampleConfig);
         $this->fetchRemovedAndRenamedItems($userCurrentConfig, $incomingSampleConfig);
@@ -166,7 +166,7 @@ class Upgrader
         return "$rootKey.$key";
     }
 
-    public function getConfigs(): array
+    public function loadConfigs(): array
     {
         $userCurrentConfig = require $this->configFiles['user_relative'];
         $incomingConfig = require $this->configFiles['package_absolute'];

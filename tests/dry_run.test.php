@@ -3,21 +3,19 @@
 use Shalvah\Upgrader\Upgrader;
 
 it("can detect items added to/removed from maps", function () {
-    $configs = [
-        [
-            'map' => ['removed' => 1],
-            'nested' => ['map' => ['baa' => 'baa', 'black' => 'sheep', 'and' => 'more']]
-        ],
-        [
-            'map' => ['added' => 1],
-            'nested' => ['map' => ['baa' => 'baa', 'black' => 'sheep']]
-        ],
+    $userOldConfig = [
+        'map' => ['removed' => 1],
+        'nested' => ['map' => ['baa' => 'baa', 'black' => 'sheep', 'and' => 'more']]
     ];
-    $mockUpgrader = mockUpgraderWithConfigs(...$configs);
+    $sampleNewConfig = [
+        'map' => ['added' => 1],
+        'nested' => ['map' => ['baa' => 'baa', 'black' => 'sheep']]
+    ];
+    $mockUpgrader = mockUpgraderWithConfigs($userOldConfig, $sampleNewConfig);
 
     $changes = $mockUpgrader->dryRun();
-    expect($changes)->toHaveCount(3);
 
+    expect($changes)->toHaveCount(3);
     /** @var $this \Shalvah\Upgrader\Tests\BaseTest */
     $this->assertArraySubset([
         [
@@ -36,15 +34,13 @@ it("can detect items added to/removed from maps", function () {
 });
 
 it("can detect items added to lists", function () {
-    $configs = [
+    $mockUpgrader = mockUpgraderWithConfigs(
         ['list' => ['baa', 'baa', 'black'], 'nested' => ['list' => []]],
         ['list' => ['baa', 'baa', 'black', 'sheep'], 'nested' => ['list' => ['item']]]
-    ];
-    $mockUpgrader = mockUpgraderWithConfigs(...$configs);
-
+    );
     $changes = $mockUpgrader->dryRun();
-    expect($changes)->toHaveCount(2);
 
+    expect($changes)->toHaveCount(2);
     /** @var $this \Shalvah\Upgrader\Tests\BaseTest */
     $this->assertArraySubset([
         [
@@ -61,25 +57,18 @@ it("can detect items added to lists", function () {
 });
 
 it("ignores items marked as dontTouch()", function () {
-    $configs = [
-        [
-            'specified_by_user' => ['baa', 'baa', 'black'],
-            'map' => [
-                'user_specified' => 'some_value',
-            ],
-        ],
-        [
-            'specified_by_user' => ['baa', 'baa', 'black', 'sheep'],
-            'map' => [
-                'just_a_sample' => 'a_value',
-            ],
-        ],
+    $userOldConfig = [
+        'specified_by_user' => ['baa', 'baa', 'black'],
+        'map' => ['user_specified' => 'some_value'],
     ];
-    $mockUpgrader = mockUpgraderWithConfigs(...$configs);
+    $sampleNewConfig = [
+        'specified_by_user' => ['baa', 'baa', 'black', 'sheep'],
+        'map' => ['just_a_sample' => 'a_value'],
+    ];
+    $changes = mockUpgraderWithConfigs($userOldConfig, $sampleNewConfig)
+        ->dryRun();
 
-    $changes = $mockUpgrader->dryRun();
     expect($changes)->toHaveCount(3);
-
     /** @var $this \Shalvah\Upgrader\Tests\BaseTest */
     $this->assertArraySubset([
         [
@@ -98,8 +87,53 @@ it("ignores items marked as dontTouch()", function () {
         ],
     ], $changes);
 
-    $mockUpgrader = mockUpgraderWithConfigs(...$configs);
-    $mockUpgrader->dontTouch('specified_by_user', 'map');
-    $changes = $mockUpgrader->dryRun();
+    $changes = mockUpgraderWithConfigs($userOldConfig, $sampleNewConfig)
+        ->dontTouch('specified_by_user', 'map')->dryRun();
+
     expect($changes)->toBeEmpty();
+});
+
+it("reports items marked with move(), only if present in old config", function () {
+    $userOldConfig = [
+        'old' => [
+            'item' => 'value',
+            'other_item' => 'other_value'
+        ]
+    ];
+    $sampleNewConfig = [
+        'old' => [
+            'other_item' => 'other_value'
+        ],
+        'new_item' => 'default'
+    ];
+    $changes = mockUpgraderWithConfigs($userOldConfig, $sampleNewConfig)
+        ->move('old.item', 'new_item')->dryRun();
+
+    expect($changes)->toHaveCount(2);
+    $this->assertArraySubset([
+        [
+            'type' => Upgrader::CHANGE_ADDED,
+            'key' => 'new_item',
+        ],
+        [
+            'type' => Upgrader::CHANGE_MOVED,
+            'key' => 'old.item',
+            'new_key' => 'new_item',
+        ],
+    ], $changes);
+
+    $userOldConfig = [
+        'old' => [
+            'other_item' => 'other_value'
+        ]
+    ];
+    $changes = mockUpgraderWithConfigs($userOldConfig, $sampleNewConfig)
+        ->move('old.item', 'new_item')->dryRun();
+
+    $this->assertArraySubset([
+        [
+            'type' => Upgrader::CHANGE_ADDED,
+            'key' => 'new_item',
+        ],
+    ], $changes);
 });
