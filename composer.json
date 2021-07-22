@@ -14,13 +14,15 @@
   ],
   "require": {
     "php": ">=7.4",
+    "illuminate/support": "^8.51",
     "nikic/php-parser": "^4.10"
   },
   "require-dev": {
     "dms/phpunit-arraysubset-asserts": "^0.2.0",
     "mockery/mockery": "^1.4",
     "pestphp/pest": "^1.10",
-    "phpstan/phpstan": "^0.12.90"
+    "phpstan/phpstan": "^0.12.90",
+    "spatie/ray": "^1.28"
   },
   "autoload": {
     "psr-4": {

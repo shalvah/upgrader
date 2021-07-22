@@ -48,12 +48,22 @@ class Upgrader
 
     public function dryRun(): array
     {
-        [$userCurrentConfig, $incomingSampleConfig] = $this->loadConfigs();
-
-        $this->fetchAddedItems($userCurrentConfig, $incomingSampleConfig);
-        $this->fetchRemovedAndRenamedItems($userCurrentConfig, $incomingSampleConfig);
+        $this->fetchChanges();
 
         return $this->changes;
+    }
+
+    public function upgrade()
+    {
+        $this->fetchChanges();
+        $this->applyChanges();
+    }
+
+    protected function fetchChanges(): void
+    {
+        [$userCurrentConfig, $incomingSampleConfig] = $this->loadConfigs();
+        $this->fetchAddedItems($userCurrentConfig, $incomingSampleConfig);
+        $this->fetchRemovedAndRenamedItems($userCurrentConfig, $incomingSampleConfig);
     }
 
     protected function fetchAddedItems(array $userCurrentConfig, array $incomingConfig, string $rootKey = '')
@@ -89,7 +99,7 @@ class Upgrader
                     'type' => self::CHANGE_ADDED,
                     'key' => $fullKey,
                     'description' => "- `{$fullKey}` will be added.",
-                    'value' => $incomingConfig[$key],
+                    'value' => $value,
                 ];
             } else {
                 if (is_array($value)) {
@@ -172,5 +182,54 @@ class Upgrader
         $incomingConfig = require $this->configFiles['package_absolute'];
 
         return [$userCurrentConfig, $incomingConfig];
+    }
+
+    protected function applyChanges()
+    {
+        [$userConfig] = $this->loadConfigs();
+
+        foreach ($this->changes as $change) {
+            switch ($change['type']) {
+                case self::CHANGE_ADDED:
+                    data_set($userConfig, $change['key'], $change['value']);
+                    break;
+                case self::CHANGE_REMOVED:
+                    $parts = explode('.', $change['key']);
+                    $child = array_pop($parts);
+                    $parent = &$userConfig;
+                    foreach ($parts as $part) {
+                        $parent = &$parent[$part];
+                    }
+                    unset($parent[$child]);
+                    break;
+                case self::CHANGE_MOVED:
+                    // Move old value in new key
+                    data_set($userConfig, $change['new_key'], data_get($userConfig, $change['key']));
+                    // Then delete old key
+                    $parts = explode('.', $change['key']);
+                    $child = array_pop($parts);
+                    $parent = &$userConfig;
+                    foreach ($parts as $part) {
+                        $parent = &$parent[$part];
+                    }
+                    unset($parent[$child]);
+                    break;
+                case self::CHANGE_ARRAY_ITEM_ADDED:
+                    $items = array_merge(data_get($userConfig, $change['key']), [$change['value']]);
+                    data_set($userConfig, $change['key'], $items);
+                    break;
+            }
+        }
+
+        ray($userConfig);
+        exit;
+
+        // Finally, print out the changes into the user's config file (saving the old one as a backup)
+        $prettyPrinter = new PrettyPrinter\Standard(['shortArraySyntax' => true]);
+        $upgradedConfig = $prettyPrinter->printFormatPreserving($ast, $this->incomingConfigFileOriginalAst, $this->incomingConfigFileOriginalTokens);
+
+        $userConfigFile = $this->configFiles['user_relative'];
+        rename($userConfigFile, "$userConfigFile.bak");
+        file_put_contents($userConfigFile, $upgradedConfig);
     }
 }
