@@ -234,8 +234,7 @@ class Upgrader
 
         $sourceCode = file_get_contents($this->configFiles['user_old']);
         $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
-        $this->userOldConfigFileAst = $parser->parse($sourceCode);
-        return $this->userOldConfigFileAst;
+        $ast = $parser->parse($sourceCode);
         // Doing this because we need to preserve the formatting when printing later
         // $lexer = new Lexer\Emulative([
         //     'usedAttributes' => [
@@ -247,13 +246,13 @@ class Upgrader
         // $parser = new Parser\Php7($lexer);
         // $this->originalOldConfigFileAst = $parser->parse($sourceCode);
         // $this->originalOldConfigFileTokens = $lexer->getTokens();
-        // $traverser = new NodeTraverser();
-        // $traverser->addVisitor(new NodeVisitor\CloningVisitor());
-        // $traverser->addVisitor(new NodeVisitor\NameResolver(null, [
-        //     'preserveOriginalNames' => true
-        // ]));
-//
-        // $this->userOldConfigFileAst = $traverser->traverse($this->originalOldConfigFileAst);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new NodeVisitor\CloningVisitor());
+        $traverser->addVisitor(new NodeVisitor\NameResolver(null, [
+            'preserveOriginalNames' => true
+        ]));
+
+        $this->userOldConfigFileAst = $traverser->traverse($ast);
         return $this->userOldConfigFileAst;
     }
 
@@ -265,13 +264,12 @@ class Upgrader
 
         $sourceCode = file_get_contents($this->configFiles['sample_new']);
         $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
-        $this->sampleNewConfigFileAst = $parser->parse($sourceCode);
-        return $this->sampleNewConfigFileAst;
-        // $traverser = new NodeTraverser();
-        // $traverser->addVisitor(new NodeVisitor\NameResolver(null, [
-        //     'preserveOriginalNames' => true
-        // ]));
-        // return $this->sampleNewConfigFileAst = $traverser->traverse($ast);
+        $ast = $parser->parse($sourceCode);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new NodeVisitor\NameResolver(null, [
+            'preserveOriginalNames' => true
+        ]));
+        return $this->sampleNewConfigFileAst = $traverser->traverse($ast);
     }
 
     protected function applyChanges(): array
@@ -304,12 +302,31 @@ class Upgrader
         return $userConfigAst;
     }
 
-    protected function writeNewConfigFile(array $ast)
+    /**
+     * Print out the changes into the user's config file (saving the old one as a backup)
+     */
+    protected function writeNewConfigFile(array $newConfigAst)
     {
-        // Print out the changes into the user's config file (saving the old one as a backup)
+        // Shorten namespaces back before printing (and add any missing use statements)
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new UnresolveNamespaces);
+        $newConfigAst = $traverser->traverse($newConfigAst);
+
+        $sampleConfigAst = $this->getSampleNewConfigFileAsAst();
+        $newUseStatements = Arr::where(
+            $sampleConfigAst, fn(Node $node) => $node instanceof Stmt\Use_
+        );
+        $alreadyPresentUseStatements = Arr::where(
+            $newConfigAst, fn(Node $node) => $node instanceof Stmt\Use_
+        );
+        $diff = $this->subtractOtherListFromList($newUseStatements, $alreadyPresentUseStatements);
+        foreach ($diff as $item) {
+            array_unshift($newConfigAst, $item['ast']);
+        }
+
         $prettyPrinter = new PrettyPrinter\Standard(['shortArraySyntax' => true]);
         // $upgradedConfig = $prettyPrinter->printFormatPreserving($ast, $this->incomingConfigFileOriginalAst, $this->incomingConfigFileOriginalTokens);
-        $astAsText = $prettyPrinter->prettyPrintFile($ast);
+        $astAsText = $prettyPrinter->prettyPrintFile($newConfigAst);
 
         $userConfigFile = $this->configFiles['user_old'];
         // rename($userConfigFile, "$userConfigFile.bak");

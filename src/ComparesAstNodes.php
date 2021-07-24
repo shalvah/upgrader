@@ -63,10 +63,10 @@ trait ComparesAstNodes
         // There's no easy way to compare two AST nodes for equality
         // So we'll just convert them to strings and check if they're equal
         $otherListWithItemsAsText = array_map(
-            fn($item) => $this->convertAstExpressionToText($item), $otherList
+            fn($item) => $this->convertAstNodesToText($item), $otherList
         );
         foreach ($list as $item) {
-            $itemAsText = $this->convertAstExpressionToText($item);
+            $itemAsText = $this->convertAstNodesToText($item);
             if (!in_array($itemAsText, $otherListWithItemsAsText)) {
                 $diff[] = ['ast' => $item, 'text' => $itemAsText];
             }
@@ -75,9 +75,13 @@ trait ComparesAstNodes
         return $diff;
     }
 
-    protected function convertAstExpressionToText($expression): string
+    protected function convertAstNodesToText($nodes): string
     {
         $prettyPrinter = new PrettyPrinter\Standard;
-        return $prettyPrinter->prettyPrintExpr($expression);
+        if ($nodes instanceof Expr) {
+            return $prettyPrinter->prettyPrintExpr($nodes);
+        } else {
+            return $prettyPrinter->prettyPrint(Arr::wrap($nodes));
+        }
     }
 }
