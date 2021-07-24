@@ -10,9 +10,9 @@ use PhpParser\NodeVisitor;
 class UnresolveNamespaces implements NodeVisitor
 {
     public function leaveNode(Node $node) {
-        if ($node instanceof Node\Expr\ClassConstFetch) {
+        if ($node instanceof Node\Name\FullyQualified) {
             // Convert all $a && $b expressions into !($a && $b)
-            return $node->getAttribute('origNode', $node);
+            return $node->getAttribute('originalName', $node);
         }
     }
 

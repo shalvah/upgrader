@@ -7,7 +7,7 @@ use PhpParser\BuilderFactory;
 use PhpParser\Node\Expr;
 use PhpParser\Node;
 
-trait ModifiesAst
+trait ModifiesAsts
 {
     protected function setValue(array &$arrayItems, string $key, $newValue)
     {
@@ -41,6 +41,7 @@ trait ModifiesAst
                     unset($searchArray[$index]);
                 }
             }
+            $searchArray = array_values($searchArray);
         });
     }
 
