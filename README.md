@@ -42,6 +42,8 @@ Upgrader:
 - Will back up the user's old config file to `{$file}.bak` so you can revert if you need to.
 - Supports keys as dot notation
 
+## Installation
+PHP 7.4+ is required.
 
 ```bash
 composer install shalvah/upgrader
