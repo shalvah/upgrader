@@ -1,5 +1,7 @@
 <?php
 
+use PhpParser\BuilderFactory;
+use PhpParser\Node\Stmt\Return_;
 use Shalvah\Upgrader\Upgrader;
 use Shalvah\Upgrader\Tests\BaseTest;
 
@@ -47,11 +49,15 @@ expect()->extend('toBeOne', function () {
  */
 function mockUpgraderWithConfigs(array $userOldConfig = [], array $sampleNewConfig = [])
 {
-    $mockUpgrader = Mockery::mock(Upgrader::class)->makePartial();
-    $mockUpgrader->shouldReceive('loadConfigs')
+    $mockUpgrader = Mockery::mock(Upgrader::class)->makePartial()
+        ->shouldAllowMockingProtectedMethods();
+    $mockUpgrader->shouldReceive('getUserOldConfigFileAsAst')
         ->andReturn([
-            $userOldConfig,
-            $sampleNewConfig,
+            new Return_((new BuilderFactory)->val($userOldConfig)),
+        ]);
+    $mockUpgrader->shouldReceive('getSampleNewConfigFileAsAst')
+        ->andReturn([
+            new Return_((new BuilderFactory)->val($sampleNewConfig)),
         ]);
     return $mockUpgrader;
 }

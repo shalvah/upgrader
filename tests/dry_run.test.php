@@ -44,16 +44,16 @@ it("can detect items added to lists", function () {
     /** @var $this \Shalvah\Upgrader\Tests\BaseTest */
     $this->assertArraySubset([
         [
-            'type' => Upgrader::CHANGE_ARRAY_ITEM_ADDED,
+            'type' => Upgrader::CHANGE_LIST_ITEM_ADDED,
             'key' => 'list',
-            'value' => 'sheep',
         ],
         [
-            'type' => Upgrader::CHANGE_ARRAY_ITEM_ADDED,
+            'type' => Upgrader::CHANGE_LIST_ITEM_ADDED,
             'key' => 'nested.list',
-            'value' => 'item',
         ],
     ], $changes);
+    expect($changes[0]['value']->value)->toEqual('sheep');
+    expect($changes[1]['value']->value)->toEqual('item');
 });
 
 it("ignores items marked as dontTouch()", function () {
@@ -72,20 +72,20 @@ it("ignores items marked as dontTouch()", function () {
     /** @var $this \Shalvah\Upgrader\Tests\BaseTest */
     $this->assertArraySubset([
         [
-            'type' => Upgrader::CHANGE_ARRAY_ITEM_ADDED,
+            'type' => Upgrader::CHANGE_LIST_ITEM_ADDED,
             'key' => 'specified_by_user',
-            'value' => 'sheep',
         ],
         [
             'type' => Upgrader::CHANGE_ADDED,
             'key' => 'map.just_a_sample',
-            'value' => 'a_value',
         ],
         [
             'type' => Upgrader::CHANGE_REMOVED,
             'key' => 'map.user_specified',
         ],
     ], $changes);
+    expect($changes[0]['value']->value)->toEqual('sheep');
+    expect($changes[1]['value']->value)->toEqual('a_value');
 
     $changes = mockUpgraderWithConfigs($userOldConfig, $sampleNewConfig)
         ->dontTouch('specified_by_user', 'map')->dryRun();

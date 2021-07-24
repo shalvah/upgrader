@@ -7,10 +7,7 @@ use Illuminate\Support\Arr;
 use PhpParser;
 use PhpParser\{Node,
     Node\Stmt,
-    Node\Expr,
-    NodeTraverser,
-    NodeVisitor,
-    ParserFactory};
+    Node\Expr};
 
 class Upgrader
 {
@@ -30,9 +27,6 @@ class Upgrader
     protected ?array $userOldConfigFileAst = [];
     /** @var Stmt[] */
     protected ?array $sampleNewConfigFileAst = [];
-    /** @var \PhpParser\Node\Stmt[] */
-    protected ?array $originalOldConfigFileAst = [];
-    protected array $originalOldConfigFileTokens = [];
 
     public function __construct(string $userOldConfigRelativePath, string $sampleNewConfigAbsolutePath)
     {
@@ -187,7 +181,7 @@ class Upgrader
             if (!$this->shouldntTouch($fullKey) && $this->expressionNodeIsArray($value)) {
                 // Key is in both old and new; recurse into array and compare the inner items
                 $this->fetchRemovedAndMovedItems(
-                    $value->items, $this->getItem($userCurrentConfig, $key)->value->items ?? null, $fullKey
+                    $value->items, $this->getItem($incomingConfig, $key)->value->items ?? null, $fullKey
                 );
             }
         }
