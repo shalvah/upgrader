@@ -3,25 +3,44 @@
 
 namespace Shalvah\Upgrader;
 
+use Illuminate\Support\Arr;
 use PhpParser;
-use PhpParser\{Node, NodeFinder, Lexer, NodeTraverser, NodeVisitor, Parser, ParserFactory, PrettyPrinter};
+use PhpParser\{Node,
+    Node\Stmt,
+    Node\Expr,
+    Lexer,
+    NodeTraverser,
+    NodeVisitor,
+    Parser,
+    ParserFactory,
+    PrettyPrinter};
 
 class Upgrader
 {
+    use ModifiesAst, ComparesAstNodes;
+
     public const CHANGE_REMOVED = 'removed';
     public const CHANGE_MOVED = 'moved';
     public const CHANGE_ADDED = 'added';
-    public const CHANGE_ARRAY_ITEM_ADDED = 'added_to_array';
+    public const CHANGE_LIST_ITEM_ADDED = 'added_to_list';
 
-    private array $changes = [];
-    private array $configFiles = [];
-    private array $movedKeys = [];
-    private array $dontTouchKeys = [];
+    protected array $changes = [];
+    protected array $configFiles = [];
+    protected array $movedKeys = [];
+    protected array $dontTouchKeys = [];
+
+    /** @var Stmt[] */
+    protected ?array $userOldConfigFileAst = [];
+    /** @var Stmt[] */
+    protected ?array $sampleNewConfigFileAst = [];
+    /** @var \PhpParser\Node\Stmt[] */
+    protected ?array $originalOldConfigFileAst = [];
+    protected array $originalOldConfigFileTokens = [];
 
     public function __construct(string $userOldConfigRelativePath, string $sampleNewConfigAbsolutePath)
     {
-        $this->configFiles['user_relative'] = $userOldConfigRelativePath;
-        $this->configFiles['package_absolute'] = $sampleNewConfigAbsolutePath;
+        $this->configFiles['user_old'] = $userOldConfigRelativePath;
+        $this->configFiles['sample_new'] = $sampleNewConfigAbsolutePath;
     }
 
     public static function ofConfigFile(string $userOldConfigRelativePath, string $sampleNewConfigAbsolutePath): self
@@ -56,45 +75,57 @@ class Upgrader
     public function upgrade()
     {
         $this->fetchChanges();
-        $this->applyChanges();
+        $upgradedConfig = $this->applyChanges();
+        $this->writeNewConfigFile($upgradedConfig);
     }
 
     protected function fetchChanges(): void
     {
-        [$userCurrentConfig, $incomingSampleConfig] = $this->loadConfigs();
-        $this->fetchAddedItems($userCurrentConfig, $incomingSampleConfig);
-        $this->fetchRemovedAndRenamedItems($userCurrentConfig, $incomingSampleConfig);
+        [$userCurrentConfigFile, $sampleNewConfigFile] = $this->parseConfigFiles();
+
+        $userCurrentConfigArray = Arr::first(
+            $userCurrentConfigFile, fn(Node $node) => $node instanceof Stmt\Return_
+        )->expr->items;
+        $sampleNewConfigArray = Arr::first(
+            $sampleNewConfigFile, fn(Node $node) => $node instanceof Stmt\Return_
+        )->expr->items;
+        $this->fetchAddedItems($userCurrentConfigArray, $sampleNewConfigArray);
+        $this->fetchRemovedAndMovedItems($userCurrentConfigArray, $sampleNewConfigArray);
     }
 
-    protected function fetchAddedItems(array $userCurrentConfig, array $incomingConfig, string $rootKey = '')
+    /**
+     * @param Expr\ArrayItem[] $userCurrentConfig
+     * @param Expr\ArrayItem[] $incomingConfig
+     */
+    protected function fetchAddedItems(
+        array $userCurrentConfig, array $incomingConfig, string $rootKey = ''
+    )
     {
-        if (is_array($incomingConfig)) {
-            $arrayKeys = array_keys($incomingConfig);
-            if (($arrayKeys[0] ?? null) === 0) {
-                // We're dealing with a list of items (numeric array)
-                $diff = array_diff($incomingConfig, $userCurrentConfig);
-                if (!empty($diff)) {
-                    foreach ($diff as $item) {
-                        $this->changes[] = [
-                            'type' => self::CHANGE_ARRAY_ITEM_ADDED,
-                            'key' => $rootKey,
-                            'value' => $item,
-                            'description' => "- '$item' will be added to `$rootKey`.",
-                        ];
-                    }
-                }
-                return;
+        if ($this->arrayIsList($incomingConfig)) {
+            // We're dealing with a list of items (numeric array)
+            $diff = $this->subtractOtherListFromList($incomingConfig, $userCurrentConfig);
+            foreach ($diff as $item) {
+                $this->changes[] = [
+                    'type' => self::CHANGE_LIST_ITEM_ADDED,
+                    'key' => $rootKey,
+                    'value' => $item['ast']->value,
+                    'description' => "- '{$item['text']}' will be added to `$rootKey`.",
+                ];
             }
+            return;
         }
 
-        foreach ($incomingConfig as $key => $value) {
+        foreach ($incomingConfig as $arrayItem) {
+            $key = $arrayItem->key->value;
+            $value = $arrayItem->value;
+
             $fullKey = $this->getFullKey($key, $rootKey);
             if ($this->shouldntTouch($fullKey)) {
                 continue;
             }
 
             // Key is in new, but not in old
-            if (!array_key_exists($key, $userCurrentConfig)) {
+            if (!$this->hasItem($userCurrentConfig, $key)) {
                 $this->changes[] = [
                     'type' => self::CHANGE_ADDED,
                     'key' => $fullKey,
@@ -102,28 +133,36 @@ class Upgrader
                     'value' => $value,
                 ];
             } else {
-                if (is_array($value)) {
+                if ($this->expressionNodeIsArray($value)) {
                     // Key is in both old and new; recurse into array and compare the inner items
-                    $this->fetchAddedItems($userCurrentConfig[$key] ?? [], $value, $fullKey);
+                    $this->fetchAddedItems(
+                        $this->getItem($userCurrentConfig, $key)->value->items ?? null, $value->items, $fullKey
+                    );
                 }
             }
 
         }
     }
 
-    protected function fetchRemovedAndRenamedItems(array $userCurrentConfig, $incomingConfig, string $rootKey = '')
+    /**
+     * @param Expr\ArrayItem[] $userCurrentConfig
+     * @param Expr\ArrayItem[]|null $incomingConfig
+     */
+    protected function fetchRemovedAndMovedItems(
+        array $userCurrentConfig, $incomingConfig, string $rootKey = ''
+    )
     {
-        if (is_array($incomingConfig)) {
-            $arrayKeys = array_keys($incomingConfig);
-            if (($arrayKeys[0] ?? null) === 0) {
-                // A list of items (numeric array)
-                // We only add, not remove.
-                return;
-            }
+        if ($this->arrayIsList($incomingConfig)) {
+            // A list of items (numeric array)
+            // We only add, not remove.
+            return;
         }
 
         // Loop over the old config
-        foreach ($userCurrentConfig as $key => $value) {
+        foreach ($userCurrentConfig as $arrayItem) {
+            $key = $arrayItem->key->value;
+            $value = $arrayItem->value;
+
             $fullKey = $this->getFullKey($key, $rootKey);
 
             // Key is in old, but was moved somewhere else in new
@@ -133,12 +172,13 @@ class Upgrader
                     'key' => $fullKey,
                     'new_key' => $this->movedKeys[$fullKey],
                     'description' => "- `$fullKey` will be moved to `{$this->movedKeys[$fullKey]}`.",
+                    'new_value' => $value,
                 ];
                 continue;
             }
 
             // Key is in old, but not in new
-            if (!array_key_exists($key, $incomingConfig)) {
+            if (!$this->hasItem($incomingConfig, $key)) {
                 $this->changes[] = [
                     'type' => self::CHANGE_REMOVED,
                     'key' => $fullKey,
@@ -147,9 +187,11 @@ class Upgrader
                 continue;
             }
 
-            if (!$this->shouldntTouch($fullKey) && is_array($value)) {
+            if (!$this->shouldntTouch($fullKey) && $this->expressionNodeIsArray($value)) {
                 // Key is in both old and new; recurse into array and compare the inner items
-                $this->fetchRemovedAndRenamedItems($value, $incomingConfig[$key] ?? [], $fullKey);
+                $this->fetchRemovedAndMovedItems(
+                    $value->items, $this->getItem($userCurrentConfig, $key)->value->items ?? null, $fullKey
+                );
             }
         }
     }
@@ -176,60 +218,101 @@ class Upgrader
         return "$rootKey.$key";
     }
 
-    public function loadConfigs(): array
+    public function parseConfigFiles(): array
     {
-        $userCurrentConfig = require $this->configFiles['user_relative'];
-        $incomingConfig = require $this->configFiles['package_absolute'];
+        $userCurrentConfig = $this->getUserOldConfigFileAsAst();
+        $incomingConfig = $this->getSampleNewConfigFileAsAst();
 
         return [$userCurrentConfig, $incomingConfig];
     }
 
-    protected function applyChanges()
+    protected function getUserOldConfigFileAsAst(): ?array
     {
-        [$userConfig] = $this->loadConfigs();
+        if (!empty($this->userOldConfigFileAst)) {
+            return $this->userOldConfigFileAst;
+        }
+
+        $sourceCode = file_get_contents($this->configFiles['user_old']);
+        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+        $this->userOldConfigFileAst = $parser->parse($sourceCode);
+        return $this->userOldConfigFileAst;
+        // Doing this because we need to preserve the formatting when printing later
+        // $lexer = new Lexer\Emulative([
+        //     'usedAttributes' => [
+        //         'comments',
+        //         'startLine', 'endLine',
+        //         'startTokenPos', 'endTokenPos',
+        //     ],
+        // ]);
+        // $parser = new Parser\Php7($lexer);
+        // $this->originalOldConfigFileAst = $parser->parse($sourceCode);
+        // $this->originalOldConfigFileTokens = $lexer->getTokens();
+        // $traverser = new NodeTraverser();
+        // $traverser->addVisitor(new NodeVisitor\CloningVisitor());
+        // $traverser->addVisitor(new NodeVisitor\NameResolver(null, [
+        //     'preserveOriginalNames' => true
+        // ]));
+//
+        // $this->userOldConfigFileAst = $traverser->traverse($this->originalOldConfigFileAst);
+        return $this->userOldConfigFileAst;
+    }
+
+    protected function getSampleNewConfigFileAsAst(): ?array
+    {
+        if (!empty($this->sampleNewConfigFileAst)) {
+            return $this->sampleNewConfigFileAst;
+        }
+
+        $sourceCode = file_get_contents($this->configFiles['sample_new']);
+        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+        $this->sampleNewConfigFileAst = $parser->parse($sourceCode);
+        return $this->sampleNewConfigFileAst;
+        // $traverser = new NodeTraverser();
+        // $traverser->addVisitor(new NodeVisitor\NameResolver(null, [
+        //     'preserveOriginalNames' => true
+        // ]));
+        // return $this->sampleNewConfigFileAst = $traverser->traverse($ast);
+    }
+
+    protected function applyChanges(): array
+    {
+        $userConfigAst = $this->getUserOldConfigFileAsAst();
+        $configArray =& Arr::first(
+            $userConfigAst, fn(Node $node) => $node instanceof Stmt\Return_
+        )->expr->items;
 
         foreach ($this->changes as $change) {
             switch ($change['type']) {
                 case self::CHANGE_ADDED:
-                    data_set($userConfig, $change['key'], $change['value']);
+                    $this->addKey($configArray, $change['key'], $change['value']);
                     break;
                 case self::CHANGE_REMOVED:
-                    $parts = explode('.', $change['key']);
-                    $child = array_pop($parts);
-                    $parent = &$userConfig;
-                    foreach ($parts as $part) {
-                        $parent = &$parent[$part];
-                    }
-                    unset($parent[$child]);
+                    $this->deleteKey($configArray, $change['key']);
                     break;
                 case self::CHANGE_MOVED:
-                    // Move old value in new key
-                    data_set($userConfig, $change['new_key'], data_get($userConfig, $change['key']));
+                    // Move old value to new key
+                    $this->setValue($configArray, $change['new_key'], $change['new_value']);
                     // Then delete old key
-                    $parts = explode('.', $change['key']);
-                    $child = array_pop($parts);
-                    $parent = &$userConfig;
-                    foreach ($parts as $part) {
-                        $parent = &$parent[$part];
-                    }
-                    unset($parent[$child]);
+                    $this->deleteKey($configArray, $change['key']);
                     break;
-                case self::CHANGE_ARRAY_ITEM_ADDED:
-                    $items = array_merge(data_get($userConfig, $change['key']), [$change['value']]);
-                    data_set($userConfig, $change['key'], $items);
+                case self::CHANGE_LIST_ITEM_ADDED:
+                    $this->pushItemOntoList($configArray, $change['key'], $change['value']);
                     break;
             }
         }
 
-        ray($userConfig);
-        exit;
+        return $userConfigAst;
+    }
 
-        // Finally, print out the changes into the user's config file (saving the old one as a backup)
+    protected function writeNewConfigFile(array $ast)
+    {
+        // Print out the changes into the user's config file (saving the old one as a backup)
         $prettyPrinter = new PrettyPrinter\Standard(['shortArraySyntax' => true]);
-        $upgradedConfig = $prettyPrinter->printFormatPreserving($ast, $this->incomingConfigFileOriginalAst, $this->incomingConfigFileOriginalTokens);
+        // $upgradedConfig = $prettyPrinter->printFormatPreserving($ast, $this->incomingConfigFileOriginalAst, $this->incomingConfigFileOriginalTokens);
+        $astAsText = $prettyPrinter->prettyPrintFile($ast);
 
-        $userConfigFile = $this->configFiles['user_relative'];
-        rename($userConfigFile, "$userConfigFile.bak");
-        file_put_contents($userConfigFile, $upgradedConfig);
+        $userConfigFile = $this->configFiles['user_old'];
+        // rename($userConfigFile, "$userConfigFile.bak");
+        file_put_contents($userConfigFile.".new", $astAsText);
     }
 }
