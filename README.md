@@ -1,6 +1,6 @@
 # Upgrader
 
-[![Latest Stable Version](https://poser.pugx.org/knuckleswtf/scribe/v/stable)](https://packagist.org/packages/shalvah/upgrader) [![Total Downloads](https://poser.pugx.org/shalvah/upgrader/downloads)](https://packagist.org/packages/shalvah/upgrader)
+[![Latest Stable Version](https://poser.pugx.org/shalvah/upgrader/v/stable)](https://packagist.org/packages/shalvah/upgrader) [![Total Downloads](https://poser.pugx.org/shalvah/upgrader/downloads)](https://packagist.org/packages/shalvah/upgrader)
 
 Releasing a new version of your PHP library with changes to the config file? Use this tool to offer an automated upgrade process to your users. Used in [Scribe v3](https://scribe.knuckles.wtf/laravel/migrating-v3).
 
