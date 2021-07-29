@@ -36,7 +36,7 @@
   },
   "scripts": {
     "lint": "phpstan analyse -c ./phpstan.neon src --memory-limit 1G",
-    "test": "pest --stop-on-failure",
+    "test": "pest --stop-on-failure --coverage --min=80",
     "test-ci": "pest"
   },
   "config": {
