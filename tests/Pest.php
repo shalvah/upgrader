@@ -1,8 +1,5 @@
 <?php
 
-use PhpParser\BuilderFactory;
-use PhpParser\Node\Stmt\Return_;
-use Shalvah\Upgrader\Upgrader;
 use Shalvah\Upgrader\Tests\BaseTest;
 
 /*
@@ -29,10 +26,6 @@ uses(BaseTest::class)->in(__DIR__);
 |
 */
 
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
-
 /*
 |--------------------------------------------------------------------------
 | Functions
@@ -43,21 +36,3 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
-
-/**
- * @return \Mockery\Mock&\Shalvah\Upgrader\Upgrader
- */
-function mockUpgraderWithConfigs(array $userOldConfig = [], array $sampleNewConfig = [])
-{
-    $mockUpgrader = Mockery::mock(Upgrader::class)->makePartial()
-        ->shouldAllowMockingProtectedMethods();
-    $mockUpgrader->shouldReceive('getUserOldConfigFileAsAst')
-        ->andReturn([
-            new Return_((new BuilderFactory)->val($userOldConfig)),
-        ]);
-    $mockUpgrader->shouldReceive('getSampleNewConfigFileAsAst')
-        ->andReturn([
-            new Return_((new BuilderFactory)->val($sampleNewConfig)),
-        ]);
-    return $mockUpgrader;
-}

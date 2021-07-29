@@ -44,7 +44,7 @@ Upgrader:
 - Will back up the user's old config file to `{$file}.bak` so you can revert if you need to.
 - Supports keys as dot notation
 
-Upgrader is still very early days (0.x), with more robust features and docs planned. Read how I built it [here](https://blog.shalvah.me/posts/implementing-programmatic-file-transformations-in-php).
+Upgrader is still early days (0.x), with more robust features and docs planned. Read how I built it [here](https://blog.shalvah.me/posts/implementing-programmatic-file-transformations-in-php).
 
 ## Installation
 PHP 7.4+ is required.
