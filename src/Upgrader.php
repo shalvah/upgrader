@@ -223,7 +223,7 @@ class Upgrader
         return [$userCurrentConfig, $incomingConfig];
     }
 
-    protected function getUserOldConfigFileAsAst(): ?array
+    protected function getUserOldConfigFileAsAst(): array
     {
         if (!empty($this->userOldConfigFileAst)) {
             return $this->userOldConfigFileAst;
@@ -233,7 +233,7 @@ class Upgrader
         return $this->userOldConfigFileAst;
     }
 
-    protected function getSampleNewConfigFileAsAst(): ?array
+    protected function getSampleNewConfigFileAsAst(): array
     {
         if (!empty($this->sampleNewConfigFileAst)) {
             return $this->sampleNewConfigFileAst;

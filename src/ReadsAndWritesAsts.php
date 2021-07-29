@@ -48,8 +48,7 @@ trait ReadsAndWritesAsts
             'preserveOriginalNames' => true
         ]));
 
-        $this->userOldConfigFileAst = $traverser->traverse($this->originalAst);
-        return $this->userOldConfigFileAst;
+        return $traverser->traverse($this->originalAst);
     }
 
     /**

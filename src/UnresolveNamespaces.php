@@ -1,8 +1,6 @@
 <?php
 
-
 namespace Shalvah\Upgrader;
-
 
 use PhpParser\Node;
 use PhpParser\NodeVisitor;
@@ -15,15 +13,9 @@ class UnresolveNamespaces implements NodeVisitor
         }
     }
 
-    public function beforeTraverse(array $nodes)
-    {
-    }
+    public function beforeTraverse(array $nodes) {}
 
-    public function enterNode(Node $node)
-    {
-    }
+    public function enterNode(Node $node) {}
 
-    public function afterTraverse(array $nodes)
-    {
-    }
+    public function afterTraverse(array $nodes) {}
 }
