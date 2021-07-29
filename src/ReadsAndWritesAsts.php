@@ -55,15 +55,15 @@ trait ReadsAndWritesAsts
     /**
      * Print out the changes into the user's config file (saving the old one as a backup)
      */
-    protected function writeAstToFile(array $newConfigAst, string $filePath)
+    protected function writeAstToFile(array $newConfigAst, string $configFilePath)
     {
         $newConfigAst = $this->cleanUpAstForPrinting($newConfigAst);
 
         $prettyPrinter = new PrettyPrinter\Standard(['shortArraySyntax' => true]);
         $astAsText = $prettyPrinter->printFormatPreserving($newConfigAst, $this->originalAst, $this->originalTokens);
 
-        rename($filePath, "$filePath.bak");
-        file_put_contents($filePath, $astAsText);
+        rename($configFilePath, "$configFilePath.bak");
+        file_put_contents($configFilePath, $astAsText);
     }
 
     /**

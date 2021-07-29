@@ -32,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: composer install
 
-      # - name: Lint code
-      #   env:
-      #     COMPOSER_MEMORY_LIMIT: "-1"
-      #   run: composer lint
+     - name: Lint code
+       env:
+         COMPOSER_MEMORY_LIMIT: "-1"
+       run: composer lint

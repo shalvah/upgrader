@@ -106,7 +106,9 @@ class Upgrader
             return;
         }
 
+        // TODO handle cases of mixed assoc- and list array
         foreach ($incomingConfig as $arrayItem) {
+            // @phpstan-ignore-next-line Not yet sure how to handle mixed
             $key = $arrayItem->key->value;
             $value = $arrayItem->value;
 
@@ -127,7 +129,8 @@ class Upgrader
                 if ($this->expressionNodeIsArray($value)) {
                     // Key is in both old and new; recurse into array and compare the inner items
                     $this->fetchAddedItems(
-                        $this->getItem($userCurrentConfig, $key)->value->items ?? null, $value->items, $fullKey
+                        // @phpstan-ignore-next-line PHPStan doesn't yet support ??
+                        $this->getItem($userCurrentConfig, $key)->value->items ?? [], $value->items ?? [], $fullKey
                     );
                 }
             }
@@ -150,7 +153,9 @@ class Upgrader
         }
 
         // Loop over the old config
+        // TODO handle cases of mixed assoc- and list array
         foreach ($userCurrentConfig as $arrayItem) {
+            // @phpstan-ignore-next-line Not yet sure how to handle mixed
             $key = $arrayItem->key->value;
             $value = $arrayItem->value;
 
@@ -181,7 +186,8 @@ class Upgrader
             if (!$this->shouldntTouch($fullKey) && $this->expressionNodeIsArray($value)) {
                 // Key is in both old and new; recurse into array and compare the inner items
                 $this->fetchRemovedAndMovedItems(
-                    $value->items, $this->getItem($incomingConfig, $key)->value->items ?? null, $fullKey
+                    // @phpstan-ignore-next-line PHPStan doesn't yet support ??
+                    $value->items ?? [], $this->getItem($incomingConfig, $key)->value->items ?? [], $fullKey
                 );
             }
         }

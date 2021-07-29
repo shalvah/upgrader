@@ -15,7 +15,8 @@ trait ModifiesAsts
         $childKey = array_pop($keySegments);
         $this->findInnerArrayByKey($arrayItems, $keySegments, function (array $searchArray) use ($childKey, $newValue) {
             $item = Arr::first(
-                $searchArray, fn(Expr\ArrayItem $node) => $node->key->value === $childKey
+                // @phpstan-ignore-next-line PHPStan doesn't yet support ??
+                $searchArray, fn(Expr\ArrayItem $node) => ($node->key->value ?? null) === $childKey
             );
             $item->value = $newValue;
         });
