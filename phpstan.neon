@@ -1,5 +1,7 @@
 parameters:
     level: 5
+    excludePaths:
+      - './src/PrettyPrinter/Standard.php'
     reportUnmatchedIgnoredErrors: false
     inferPrivatePropertyTypeFromConstructor: true
     ignoreErrors:
