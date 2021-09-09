@@ -5,7 +5,14 @@ use Illuminate\Support\Collection;
 return [
     'map' => [
         // `key_1` removed
+        /**
+         * Present item comment - should not overwrite
+         */
         'key_2' => getenv('2'),
+
+        /**
+         * Added item 1 comment
+         */
         'key_3' => 'added', // Added
     ],
     'nested' => [
@@ -26,5 +33,9 @@ return [
         Collection::class, // Changed
     ],
     'thing' => false,
+
+    /**
+     * Added item 2 comment
+     */
     'new_other_thing' => 'default', // Replaces `other_thing`
 ];

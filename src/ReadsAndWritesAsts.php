@@ -4,7 +4,6 @@ namespace Shalvah\Upgrader;
 
 use Illuminate\Support\Arr;
 use PhpParser\Parser;
-use PhpParser\PrettyPrinter;
 use PhpParser\Lexer;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;

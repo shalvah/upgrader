@@ -9,11 +9,11 @@ use PhpParser\Node;
 
 trait ModifiesAsts
 {
-    protected function setValue(array &$arrayItems, string $key, $newValue)
+    protected function setValue(array &$allArrayItems, string $dotPath, $newValue)
     {
-        $keySegments = explode('.', $key);
+        $keySegments = explode('.', $dotPath);
         $childKey = array_pop($keySegments);
-        $this->findInnerArrayByKey($arrayItems, $keySegments, function (array $searchArray) use ($childKey, $newValue) {
+        $this->findInnerArrayByKey($allArrayItems, $keySegments, function (array $searchArray) use ($childKey, $newValue) {
             $item = Arr::first(
                 // @phpstan-ignore-next-line PHPStan doesn't yet support ??
                 $searchArray, fn(Expr\ArrayItem $node) => ($node->key->value ?? null) === $childKey
@@ -22,21 +22,20 @@ trait ModifiesAsts
         });
     }
 
-    protected function addKey(array &$arrayItems, string $key, $newValue)
+    protected function addKey(array &$allArrayItems, string $dotPath, $newItem)
     {
-        $keySegments = explode('.', $key);
-        $childKey = array_pop($keySegments);
-        $this->findInnerArrayByKey($arrayItems, $keySegments, function (array &$searchArray) use ($childKey, $newValue) {
-            $keyNode = (new BuilderFactory)->val($childKey);
-            $searchArray[] = new Expr\ArrayItem($newValue, $keyNode);
+        $keySegments = explode('.', $dotPath);
+        array_pop($keySegments);
+        $this->findInnerArrayByKey($allArrayItems, $keySegments, function (array &$searchArray) use ($newItem) {
+            $searchArray[] = $newItem;
         });
     }
 
-    protected function deleteKey(array &$arrayItems, string $key)
+    protected function deleteKey(array &$allArrayItems, string $dotPath)
     {
-        $keySegments = explode('.', $key);
+        $keySegments = explode('.', $dotPath);
         $childKey = array_pop($keySegments);
-        $this->findInnerArrayByKey($arrayItems, $keySegments, function (array &$searchArray) use ($childKey) {
+        $this->findInnerArrayByKey($allArrayItems, $keySegments, function (array &$searchArray) use ($childKey) {
             foreach ($searchArray as $index => $item) {
                 if ($item->key->value === $childKey) {
                     unset($searchArray[$index]);
@@ -46,10 +45,10 @@ trait ModifiesAsts
         });
     }
 
-    protected function pushItemOntoList(array &$arrayItems, string $listKey, $newValue)
+    protected function pushItemOntoList(array &$allArrayItems, string $listDotPath, $newValue)
     {
-        $keySegments = explode('.', $listKey);
-        $this->findInnerArrayByKey($arrayItems, $keySegments, function (array &$list) use ($newValue) {
+        $keySegments = explode('.', $listDotPath);
+        $this->findInnerArrayByKey($allArrayItems, $keySegments, function (array &$list) use ($newValue) {
             $list[] = new Expr\ArrayItem($newValue, null);
         });
     }

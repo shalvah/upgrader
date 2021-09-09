@@ -127,12 +127,13 @@ class Upgrader
                     'key' => $fullKey,
                     'description' => "- `{$fullKey}` will be added.",
                     'value' => $value,
+                    'item' => $this->getItem($incomingConfig, $key),
                 ];
             } else {
                 if ($this->expressionNodeIsArray($value)) {
                     // Key is in both old and new; recurse into array and compare the inner items
                     $this->fetchAddedItems(
-                        // @phpstan-ignore-next-line PHPStan doesn't yet support ??
+                    // @phpstan-ignore-next-line PHPStan doesn't yet support ??
                         $this->getItem($userCurrentConfig, $key)->value->items ?? [], $value->items ?? [], $fullKey
                     );
                 }
@@ -189,7 +190,7 @@ class Upgrader
             if (!$this->shouldntTouch($fullKey) && $this->expressionNodeIsArray($value)) {
                 // Key is in both old and new; recurse into array and compare the inner items
                 $this->fetchRemovedAndMovedItems(
-                    // @phpstan-ignore-next-line PHPStan doesn't yet support ??
+                // @phpstan-ignore-next-line PHPStan doesn't yet support ??
                     $value->items ?? [], $this->getItem($incomingConfig, $key)->value->items ?? [], $fullKey
                 );
             }
@@ -256,7 +257,7 @@ class Upgrader
         foreach ($this->changes as $change) {
             switch ($change['type']) {
                 case self::CHANGE_ADDED:
-                    $this->addKey($configArray, $change['key'], $change['value']);
+                    $this->addKey($configArray, $change['key'], $change['item']);
                     break;
                 case self::CHANGE_REMOVED:
                     $this->deleteKey($configArray, $change['key']);

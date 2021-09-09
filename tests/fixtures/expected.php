@@ -6,7 +6,13 @@ use Shalvah\Upgrader;
 
 return [
     'map' => [
+        /**
+         * Present item comment
+         */
         'key_2' => getenv('2'),
+        /**
+         * Added item 1 comment
+         */
         'key_3' => 'added',
     ],
     'nested' => [
@@ -24,5 +30,9 @@ return [
         'black',
     ],
     'thing' => false,
+
+    /**
+     * Added item 2 comment
+     */
     'new_other_thing' => rand(0, 1),
 ];
