@@ -58,9 +58,7 @@ class Upgrader
 
     public function dryRun(): array
     {
-        $this->fetchChanges();
-
-        return $this->changes;
+        return $this->fetchChanges();
     }
 
     public function upgrade()
@@ -70,8 +68,12 @@ class Upgrader
         $this->writeAstToFile($upgradedConfig, $this->configFiles['user_old']);
     }
 
-    protected function fetchChanges(): void
+    protected function fetchChanges(): array
     {
+        if (!empty($this->changes)) {
+            return $this->changes;
+        }
+
         [$userCurrentConfigFile, $sampleNewConfigFile] = $this->parseConfigFiles();
 
         $userCurrentConfigArray = Arr::first(
@@ -82,6 +84,7 @@ class Upgrader
         )->expr->items;
         $this->fetchAddedItems($userCurrentConfigArray, $sampleNewConfigArray);
         $this->fetchRemovedAndMovedItems($userCurrentConfigArray, $sampleNewConfigArray);
+        return $this->changes;
     }
 
     /**
