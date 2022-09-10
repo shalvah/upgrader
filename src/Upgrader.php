@@ -133,7 +133,6 @@ class Upgrader
                 if ($this->expressionNodeIsArray($value)) {
                     // Key is in both old and new; recurse into array and compare the inner items
                     $this->fetchAddedItems(
-                    // @phpstan-ignore-next-line PHPStan doesn't yet support ??
                         $this->getItem($userCurrentConfig, $key)->value->items ?? [], $value->items ?? [], $fullKey
                     );
                 }
@@ -190,7 +189,6 @@ class Upgrader
             if (!$this->shouldntTouch($fullKey) && $this->expressionNodeIsArray($value)) {
                 // Key is in both old and new; recurse into array and compare the inner items
                 $this->fetchRemovedAndMovedItems(
-                // @phpstan-ignore-next-line PHPStan doesn't yet support ??
                     $value->items ?? [], $this->getItem($incomingConfig, $key)->value->items ?? [], $fullKey
                 );
             }
