@@ -47,7 +47,7 @@ Upgrader:
 Upgrader is still early days (0.x), with more robust features and docs planned. Read how I built it [here](https://blog.shalvah.me/posts/implementing-programmatic-file-transformations-in-php).
 
 ## Installation
-PHP 7.4+ is required.
+PHP 8+ is required.
 
 ```bash
 composer require shalvah/upgrader
