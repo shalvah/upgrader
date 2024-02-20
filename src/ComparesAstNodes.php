@@ -87,12 +87,6 @@ trait ComparesAstNodes
      */
     protected function convertAstNodesToText($nodes): string
     {
-        $prettyPrinter = new PrettyPrinter\Standard;
         return (new NodeDumper())->dump($nodes);
-        if ($nodes instanceof Expr) {
-            return $prettyPrinter->prettyPrintExpr($nodes);
-        } else {
-            return $prettyPrinter->prettyPrint(Arr::wrap($nodes));
-        }
     }
 }
