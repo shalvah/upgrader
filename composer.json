@@ -15,7 +15,7 @@
   "require": {
     "php": ">=8.0",
     "illuminate/support": ">=8.0",
-    "nikic/php-parser": "^4.13|^5.0"
+    "nikic/php-parser": "^5.0"
   },
   "require-dev": {
     "dms/phpunit-arraysubset-asserts": "^0.2.0",
