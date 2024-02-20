@@ -5,6 +5,8 @@ namespace Shalvah\Upgrader;
 use Illuminate\Support\Arr;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
+use PhpParser\Node\ArrayItem;
+use PhpParser\NodeDumper;
 use PhpParser\PrettyPrinter;
 
 trait ComparesAstNodes
@@ -19,7 +21,7 @@ trait ComparesAstNodes
     {
         return Arr::first(
             // @phpstan-ignore-next-line PHPStan doesn't yet support ??
-            $arrayItems, fn(Expr\ArrayItem $node) => ($node->key->value ?? null) === $key
+            $arrayItems, fn(ArrayItem $node) => ($node->key->value ?? null) === $key
         );
     }
 
@@ -86,6 +88,7 @@ trait ComparesAstNodes
     protected function convertAstNodesToText($nodes): string
     {
         $prettyPrinter = new PrettyPrinter\Standard;
+        return (new NodeDumper())->dump($nodes);
         if ($nodes instanceof Expr) {
             return $prettyPrinter->prettyPrintExpr($nodes);
         } else {

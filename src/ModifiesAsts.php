@@ -3,7 +3,7 @@
 namespace Shalvah\Upgrader;
 
 use Illuminate\Support\Arr;
-use PhpParser\BuilderFactory;
+use PhpParser\Node\ArrayItem;
 use PhpParser\Node\Expr;
 use PhpParser\Node;
 
@@ -16,7 +16,7 @@ trait ModifiesAsts
         $this->findInnerArrayByKey($allArrayItems, $keySegments, function (array $searchArray) use ($childKey, $newValue) {
             $item = Arr::first(
                 // @phpstan-ignore-next-line PHPStan doesn't yet support ??
-                $searchArray, fn(Expr\ArrayItem $node) => ($node->key->value ?? null) === $childKey
+                $searchArray, fn(ArrayItem $node) => ($node->key->value ?? null) === $childKey
             );
             $item->value = $newValue;
         });

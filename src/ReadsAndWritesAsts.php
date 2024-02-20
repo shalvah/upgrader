@@ -3,8 +3,6 @@
 namespace Shalvah\Upgrader;
 
 use Illuminate\Support\Arr;
-use PhpParser\Parser;
-use PhpParser\Lexer;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
@@ -21,7 +19,7 @@ trait ReadsAndWritesAsts
     protected function parseFile(string $filePath): array
     {
         $sourceCode = file_get_contents($filePath);
-        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+        $parser = (new ParserFactory)->createForHostVersion();
         $ast = $parser->parse($sourceCode);
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new NodeVisitor\NameResolver(null, [
@@ -35,13 +33,9 @@ trait ReadsAndWritesAsts
         $sourceCode = file_get_contents($filePath);
 
         // Doing this because we need to preserve the formatting when printing later
-        $lexer = new Lexer\Emulative([
-            'usedAttributes' => [
-                'comments', 'startLine', 'endLine', 'startTokenPos', 'endTokenPos',
-            ],
-        ]);
-        $this->originalAst = (new Parser\Php7($lexer))->parse($sourceCode);
-        $this->originalTokens = $lexer->getTokens();
+        $parser = (new ParserFactory())->createForHostVersion();
+        $this->originalAst = $parser->parse($sourceCode);
+        $this->originalTokens = $parser->getTokens();
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new NodeVisitor\CloningVisitor());
         $traverser->addVisitor(new NodeVisitor\NameResolver(null, [
