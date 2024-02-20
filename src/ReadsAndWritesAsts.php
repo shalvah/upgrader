@@ -8,6 +8,7 @@ use PhpParser\Lexer;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
+use PhpParser\PhpVersion;
 use PhpParser\NodeVisitor;
 use PhpParser\PrettyPrinter;
 use PhpParser\Node\Stmt;
@@ -21,7 +22,9 @@ trait ReadsAndWritesAsts
     protected function parseFile(string $filePath): array
     {
         $sourceCode = file_get_contents($filePath);
-        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+//        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+        $parser = (new ParserFactory)->createForVersion(PhpVersion::getHostVersion());
+
         $ast = $parser->parse($sourceCode);
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new NodeVisitor\NameResolver(null, [
@@ -35,11 +38,15 @@ trait ReadsAndWritesAsts
         $sourceCode = file_get_contents($filePath);
 
         // Doing this because we need to preserve the formatting when printing later
-        $lexer = new Lexer\Emulative([
-            'usedAttributes' => [
-                'comments', 'startLine', 'endLine', 'startTokenPos', 'endTokenPos',
-            ],
-        ]);
+        $lexer = new Lexer\Emulative(
+            PhpVersion::getHostVersion()
+
+//            [
+//            'usedAttributes' => [
+//                'comments', 'startLine', 'endLine', 'startTokenPos', 'endTokenPos',
+//            ],
+//        ]
+        );
         $this->originalAst = (new Parser\Php7($lexer))->parse($sourceCode);
         $this->originalTokens = $lexer->getTokens();
         $traverser = new NodeTraverser();
